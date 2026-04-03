@@ -28,6 +28,38 @@ const normalizeDateKey = (value) => {
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
+const mapLikeToObject = (value) => {
+  if (!value) return {};
+  if (value instanceof Map) return Object.fromEntries(value.entries());
+  return value;
+};
+
+const normalizeLocationStudents = (value) => {
+  if (Array.isArray(value)) return value;
+  if (!value) return [];
+  if (value instanceof Map) return normalizeLocationStudents(Array.from(value.values()));
+  if (typeof value !== 'object') return [];
+  if (value.customerName || value.subscriptionId) return [value];
+  if (Array.isArray(value.students)) return value.students;
+
+  return Object.values(value).flatMap((entry) => normalizeLocationStudents(entry));
+};
+
+const normalizeGroupedList = (groupedList) => {
+  const source = mapLikeToObject(groupedList);
+  if (!source || typeof source !== 'object') return {};
+
+  return Object.fromEntries(
+    Object.entries(source).map(([locationName, students]) => [
+      locationName,
+      normalizeLocationStudents(students)
+    ])
+  );
+};
+
+const countGroupedStudents = (groupedList) =>
+  Object.values(normalizeGroupedList(groupedList)).reduce((sum, students) => sum + students.length, 0);
+
 const getDeliverySessionsByPlan = (planType) => {
   const plan = String(planType || '').toLowerCase();
   if (plan.includes('full')) return ['morning', 'afternoon'];
@@ -81,6 +113,24 @@ const adjustVendorSubscriptionsEndDate = async (vendorId, daysDelta) => {
 
   await Subscription.bulkWrite(bulkOps);
   return subscriptions.length;
+};
+
+// Helper function to convert Map to plain object for JSON response
+const convertMapToObject = (map) => {
+  const obj = {};
+  for (const [key, value] of map.entries()) {
+    obj[key] = value;
+  }
+  return obj;
+};
+
+// Helper function to convert plain object back to Map
+const objectToMap = (obj) => {
+  const map = new Map();
+  for (const [key, value] of Object.entries(obj)) {
+    map.set(key, value);
+  }
+  return map;
 };
 
 // GET /api/vendor/dashboard
@@ -366,12 +416,31 @@ exports.getDailyDeliveryList = async (req, res) => {
     const requestedDateKey = normalizeDateKey(req.query.date);
     const targetDateKey = requestedDateKey || todayDateString;
 
-    // If vendor marked this date as a holiday, there should be no drop-offs.
-    const vendorHoliday = await VendorHoliday.findOne({
+    // Get current delivery session for this vendor and date
+    const DeliverySession = require('../models/DeliverySession');
+    let deliverySession = await DeliverySession.findOne({
       vendor: vendorProfile._id,
-      dateKey: targetDateKey
+      date: targetDateKey
     });
-    if (vendorHoliday) {
+
+    // If no session exists for today, create one with default morning session
+    if (!deliverySession && targetDateKey === todayDateString) {
+      const deliveryScheduler = require('../services/deliveryScheduler');
+      const morningData = await deliveryScheduler.calculateDeliveriesForSession(vendorProfile._id, targetDateKey, 'morning');
+
+      deliverySession = await DeliverySession.create({
+        vendor: vendorProfile._id,
+        date: targetDateKey,
+        currentSession: 'morning',
+        morningDeliveries: {
+          totalCount: morningData.totalCount || 0,
+          locationWise: mapLikeToObject(morningData.locationWise)
+        }
+      });
+    }
+
+    // If still no session (for past/future dates), return empty
+    if (!deliverySession) {
       return res.status(200).json({
         date: targetDateKey,
         totalDeliveries: 0,
@@ -385,95 +454,100 @@ exports.getDailyDeliveryList = async (req, res) => {
           morning: { totalDeliveries: 0, groupedList: {} },
           afternoon: { totalDeliveries: 0, groupedList: {} }
         },
-        isVendorHoliday: true,
-        holidayReason: vendorHoliday.reason || 'Vendor holiday'
+        currentSession: 'morning',
+        isVendorHoliday: false,
+        holidayReason: ''
       });
     }
 
-    // 2. Fetch all ACTIVE subscriptions for this vendor
-    // We populate the 'customer' field to get their name, phone, location, and roomNumber
-    const allActiveSubs = await Subscription.find({ 
-      vendor: vendorProfile._id, 
-      status: 'active' 
-    }).populate('customer', 'name phone location roomNumber');
-
-    // 3. The Filter: Remove anyone who has marked today as a holiday
-    const deliveriesToday = allActiveSubs.filter(sub => {
-      // If skippedDates doesn't exist or today is NOT in the array, they get food!
-      return !sub.skippedDates || !sub.skippedDates.includes(targetDateKey);
+    // Check if vendor has a holiday today
+    const vendorHoliday = await VendorHoliday.findOne({
+      vendor: vendorProfile._id,
+      dateKey: targetDateKey
     });
 
+    const isVendorHoliday = !!vendorHoliday;
+    const holidayReason = vendorHoliday?.reason || '';
+
+    const deliveryScheduler = require('../services/deliveryScheduler');
+
+    const ensureSessionData = async (sessionName) => {
+      const existingTotal = deliverySession?.[`${sessionName}Deliveries`]?.totalCount || 0;
+      const existingLocationWise = deliverySession?.[`${sessionName}Deliveries`]?.locationWise || {};
+      const normalizedGroupedList = normalizeGroupedList(existingLocationWise);
+      const normalizedCount = countGroupedStudents(normalizedGroupedList);
+
+      if (existingTotal > 0 && normalizedCount === 0 && targetDateKey === todayDateString) {
+        const rebuiltData = await deliveryScheduler.calculateDeliveriesForSession(vendorProfile._id, targetDateKey, sessionName);
+        const rebuiltGroupedList = normalizeGroupedList(rebuiltData.locationWise);
+
+        await DeliverySession.updateOne(
+          { _id: deliverySession._id },
+          {
+            $set: {
+              [`${sessionName}Deliveries.totalCount`]: rebuiltData.totalCount || 0,
+              [`${sessionName}Deliveries.locationWise`]: mapLikeToObject(rebuiltData.locationWise),
+              lastUpdated: new Date()
+            }
+          }
+        );
+
+        deliverySession[`${sessionName}Deliveries`] = {
+          totalCount: rebuiltData.totalCount || 0,
+          locationWise: mapLikeToObject(rebuiltData.locationWise)
+        };
+
+        return {
+          totalDeliveries: rebuiltData.totalCount || 0,
+          groupedList: rebuiltGroupedList
+        };
+      }
+
+      return {
+        totalDeliveries: existingTotal,
+        groupedList: normalizedGroupedList
+      };
+    };
+
+    // Return data based on current session
+    const currentSession = deliverySession.currentSession;
+    const sessions = {
+      morning: await ensureSessionData('morning'),
+      afternoon: await ensureSessionData('afternoon')
+    };
+
+    const totalDeliveries = sessions[currentSession]?.totalDeliveries || 0;
+    const groupedList = sessions[currentSession]?.groupedList || {};
+
+    // Get delivered records for tracking
     const deliveredRecords = await DeliveryStatus.find({
       vendor: vendorProfile._id,
       dateKey: targetDateKey
     }).select('subscription session');
+
     const deliveredKeys = new Set(
       deliveredRecords.map((record) => `${String(record.subscription)}:${record.session || 'afternoon'}`)
     );
 
-    const deliveryEntries = [];
-    deliveriesToday.forEach((sub) => {
-      const sessions = getDeliverySessionsByPlan(sub.planType);
-      sessions.forEach((session) => {
-        deliveryEntries.push({
-          ...sub.toObject(),
-          deliverySession: session
-        });
-      });
-    });
-
-    const pendingDeliveries = deliveryEntries.filter(
-      (entry) => !deliveredKeys.has(`${String(entry._id)}:${entry.deliverySession}`)
-    );
-    const deliveredEntries = deliveryEntries.filter(
-      (entry) => deliveredKeys.has(`${String(entry._id)}:${entry.deliverySession}`)
-    );
-
-    const groupByLocation = (entries) => entries.reduce((acc, sub) => {
-      if (!sub.customer) return acc;
-      const location = sub.customer.location || 'Unspecified Location';
-      if (!acc[location]) acc[location] = [];
-      acc[location].push({
-        subscriptionId: sub._id,
-        customerName: sub.customer.name,
-        roomNumber: sub.customer.roomNumber || 'N/A',
-        phone: sub.customer.phone,
-        planType: sub.planType,
-        mealType: sub.mealType,
-        mealSlot: sub.deliverySession
-      });
-      return acc;
-    }, {});
-
-    const morningEntries = pendingDeliveries.filter((entry) => entry.deliverySession === 'morning');
-    const afternoonEntries = pendingDeliveries.filter((entry) => entry.deliverySession === 'afternoon');
-    const deliveredMorningEntries = deliveredEntries.filter((entry) => entry.deliverySession === 'morning');
-    const deliveredAfternoonEntries = deliveredEntries.filter((entry) => entry.deliverySession === 'afternoon');
-
-    const groupedDeliveries = groupByLocation(pendingDeliveries);
-    const morningGrouped = groupByLocation(morningEntries);
-    const afternoonGrouped = groupByLocation(afternoonEntries);
-    const deliveredGrouped = groupByLocation(deliveredEntries);
-    const deliveredMorningGrouped = groupByLocation(deliveredMorningEntries);
-    const deliveredAfternoonGrouped = groupByLocation(deliveredAfternoonEntries);
+    // For now, return empty delivered data (can be enhanced later)
+    const deliveredGroupedList = {};
+    const deliveredSessions = {
+      morning: { totalDeliveries: 0, groupedList: {} },
+      afternoon: { totalDeliveries: 0, groupedList: {} }
+    };
 
     // 5. Send it back to the React frontend
-    res.status(200).json({ 
+    res.status(200).json({
       date: targetDateKey,
-      totalDeliveries: pendingDeliveries.length,
-      groupedList: groupedDeliveries,
-      sessions: {
-        morning: { totalDeliveries: morningEntries.length, groupedList: morningGrouped },
-        afternoon: { totalDeliveries: afternoonEntries.length, groupedList: afternoonGrouped }
-      },
-      deliveredGroupedList: deliveredGrouped,
-      deliveredSessions: {
-        morning: { totalDeliveries: deliveredMorningEntries.length, groupedList: deliveredMorningGrouped },
-        afternoon: { totalDeliveries: deliveredAfternoonEntries.length, groupedList: deliveredAfternoonGrouped }
-      },
+      totalDeliveries,
+      groupedList,
+      sessions,
+      deliveredGroupedList,
+      deliveredSessions,
       deliveredCount: deliveredRecords.length,
-      isVendorHoliday: false,
-      holidayReason: ''
+      currentSession,
+      isVendorHoliday,
+      holidayReason
     });
 
   } catch (error) {
@@ -522,6 +596,9 @@ exports.getVendorProfileSettings = async (req, res) => {
       name: user.name,
       email: user.email,
       phone: user.phone,
+      status: vendorProfile.status || 'pending',
+      approvalDate: vendorProfile.approvalDate || null,
+      rejectionReason: vendorProfile.rejectionReason || '',
       businessName: vendorProfile.businessName,
       serviceArea: vendorProfile.serviceArea,
       serviceType: vendorProfile.serviceType,
@@ -529,7 +606,14 @@ exports.getVendorProfileSettings = async (req, res) => {
       deliveryType: vendorProfile.deliveryType,
       monthlyFee: vendorProfile.monthlyFee,
       halfTiffinMonthlyPrice: vendorProfile.halfTiffinMonthlyPrice,
-      singleTiffinPrice: vendorProfile.singleTiffinPrice
+      singleTiffinPrice: vendorProfile.singleTiffinPrice,
+      vendorProfile: {
+        id: vendorProfile._id,
+        status: vendorProfile.status || 'pending',
+        approvalDate: vendorProfile.approvalDate || null,
+        rejectionReason: vendorProfile.rejectionReason || '',
+        businessName: vendorProfile.businessName
+      }
     });
 
   } catch (error) {
@@ -684,6 +768,29 @@ exports.markAsPaid = async (req, res) => {
     res.status(200).json({ message: 'Payment recorded successfully!' });
   } catch (error) {
     res.status(500).json({ message: 'Server error updating payment' });
+  }
+};
+
+// --- Manual trigger for testing delivery updates (development only) ---
+exports.triggerDeliveryUpdate = async (req, res) => {
+  try {
+    const vendorProfile = await VendorProfile.findOne({ vendorId: req.user.userId });
+    if (!vendorProfile) {
+      return res.status(404).json({ message: 'Vendor profile not found' });
+    }
+
+    const { session } = req.body; // 'morning' or 'afternoon'
+    if (!session || !['morning', 'afternoon'].includes(session)) {
+      return res.status(400).json({ message: 'Invalid session. Must be "morning" or "afternoon"' });
+    }
+
+    const deliveryScheduler = require('../services/deliveryScheduler');
+    await deliveryScheduler.updateDeliveriesForSession(vendorProfile._id, session);
+
+    res.status(200).json({ message: `Delivery counts updated for ${session} session` });
+  } catch (error) {
+    console.error('Error triggering delivery update:', error);
+    res.status(500).json({ message: 'Server error updating deliveries' });
   }
 };
 
@@ -1110,7 +1217,7 @@ exports.addVendorHoliday = async (req, res) => {
       return res.status(404).json({ message: 'Vendor profile not found' });
     }
 
-    const { date, reason } = req.body;
+    const { date, reason, time } = req.body;
     const dateKey = normalizeDateKey(date);
     if (!dateKey) {
       return res.status(400).json({ message: 'Valid holiday date is required in YYYY-MM-DD format.' });
@@ -1126,6 +1233,7 @@ exports.addVendorHoliday = async (req, res) => {
     const holiday = await VendorHoliday.create({
       vendor: vendorProfile._id,
       dateKey,
+      time: time || 'full_day',
       reason: reason ? String(reason).trim() : '',
       extendedSubscriptions: modifiedCount
     });

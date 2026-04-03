@@ -24,4 +24,10 @@ router.get('/me', authMiddleware, async (req, res) => {
   }
 });
 
+// --- ADMIN ONLY ROUTE ---
+router.post('/create-admin', authMiddleware, authController.createAdmin);
+router.post('/approve-vendor', authMiddleware, authController.approveVendor);
+router.get('/pending-vendors', authMiddleware, authController.getPendingVendors);
+router.get('/approved-vendors', authMiddleware, authController.getApprovedVendors);
+
 module.exports = router;

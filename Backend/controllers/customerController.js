@@ -3,6 +3,7 @@ const Subscription = require('../models/Subscription');
 const DailyMenu = require('../models/DailyMenu');
 const Announcement = require('../models/Announcement');
 const VendorProfile = require('../models/VendorProfile');
+const VendorHoliday = require('../models/VendorHoliday');
 const Review = require('../models/Review');
 const HomemadeItem = require('../models/HomemadeItem');
 const HomemadeOrder = require('../models/HomemadeOrder');
@@ -183,28 +184,40 @@ exports.updateHolidays = async (req, res) => {
       return res.status(404).json({ error: "Subscription not found for this customer." });
     }
 
-    // Normalize to YYYY-MM-DD and deduplicate.
-    const normalizedDates = [...new Set(skippedDates.map(normalizeDateKey).filter(Boolean))].sort();
+    // Normalize to array of objects with date and time
+    const normalizedHolidays = skippedDates.map(holiday => {
+      if (typeof holiday === 'string') {
+        // Legacy format: just date string
+        return { date: normalizeDateKey(holiday), time: 'full_day' };
+      } else if (typeof holiday === 'object' && holiday.date) {
+        // New format: { date, time }
+        return {
+          date: normalizeDateKey(holiday.date),
+          time: holiday.time || 'full_day'
+        };
+      }
+      return null;
+    }).filter(Boolean);
 
     // Allow leave for today and future dates. Only past dates are ignored.
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
-    const validDates = [];
+    const validHolidays = [];
     const ignoredDates = [];
 
-    normalizedDates.forEach((dateKey) => {
-      const targetDate = parseDateKeyAsLocal(dateKey);
+    normalizedHolidays.forEach((holiday) => {
+      const targetDate = parseDateKeyAsLocal(holiday.date);
       if (targetDate.getTime() >= todayStart.getTime()) {
-        validDates.push(dateKey);
+        validHolidays.push(holiday);
       } else {
-        ignoredDates.push(dateKey);
+        ignoredDates.push(holiday.date);
       }
     });
 
-    subscription.skippedDates = validDates;
+    subscription.skippedDates = validHolidays;
     const updatedSubscription = await subscription.save();
 
-    res.status(200).json({ 
+    res.status(200).json({
       message: ignoredDates.length
         ? "Holidays updated. Some past dates were not saved."
         : "Holidays updated successfully!",
@@ -233,9 +246,16 @@ exports.getCustomerDashboard = async (req, res) => {
 
     if (activeSubscription) {
       // 1. Fetch announcements
-      vendorAnnouncements = await Announcement.find({ 
+      const latestAnnouncement = await Announcement.findOne({ 
           vendorId: activeSubscription.vendor._id 
-      }).sort({ createdAt: -1 }).limit(3);
+      }).sort({ createdAt: -1 });
+
+      if (latestAnnouncement) {
+        vendorAnnouncements = [{
+          ...latestAnnouncement.toObject(),
+          vendorName: activeSubscription.vendor?.businessName || 'Vendor'
+        }];
+      }
       
       // 2. NEW: Check if the vendor marked them as unpaid!
       // If it's explicitly 'unpaid', or if the field is missing (old data), flag it.
@@ -299,11 +319,17 @@ exports.getDashboardData = async (req, res) => {
         todaysMenu = buildTodaysMenuFromWeekly(weeklyMenuFromVendor);
       }
 
-      announcements = await Announcement.find({
+      const latestAnnouncement = await Announcement.findOne({
         vendorId: activeSubscription.vendor._id
       })
-      .sort({ createdAt: -1 })
-      .limit(5);
+      .sort({ createdAt: -1 });
+
+      if (latestAnnouncement) {
+        announcements = [{
+          ...latestAnnouncement.toObject(),
+          vendorName: activeSubscription.vendor?.businessName || 'Vendor'
+        }];
+      }
     }
 
     const activeSubscriptions = await Subscription.find({
@@ -418,10 +444,36 @@ exports.getMySubscriptions = async (req, res) => {
 
     // Find all subscriptions for this user and populate the vendor's business name
     const subscriptions = await Subscription.find({ customer: customerId })
-      .populate('vendor', 'businessName') 
+      .populate('vendor', 'businessName')
       .sort({ createdAt: -1 }); // Shows the newest requests at the top!
 
-    res.status(200).json(subscriptions);
+    const vendorIds = subscriptions
+      .map((sub) => sub.vendor?._id)
+      .filter((id) => id);
+
+    const vendorHolidays = await VendorHoliday.find({ vendor: { $in: vendorIds } });
+
+    const vendorHolidayMap = vendorHolidays.reduce((acc, holiday) => {
+      const vendorId = holiday.vendor.toString();
+      acc[vendorId] = acc[vendorId] || [];
+      acc[vendorId].push({
+        dateKey: holiday.dateKey,
+        time: holiday.time || 'full_day',
+        reason: holiday.reason
+      });
+      return acc;
+    }, {});
+
+    const enriched = subscriptions.map((sub) => {
+      const vendorId = sub.vendor?._id?.toString();
+      const subObj = sub.toObject();
+      return {
+        ...subObj,
+        vendorHolidays: vendorId ? vendorHolidayMap[vendorId] || [] : []
+      };
+    });
+
+    res.status(200).json(enriched);
   } catch (error) {
     console.error("Error fetching subscriptions:", error);
     res.status(500).json({ message: 'Server error fetching subscriptions' });

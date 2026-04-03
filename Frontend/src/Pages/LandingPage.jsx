@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ShoppingBag } from 'lucide-react';
 import LandingHeader from '../LandingPageComp/LandingHeader';
 import Section1 from '../LandingPageComp/Section1';
@@ -6,6 +7,21 @@ import Section2 from '../LandingPageComp/section2';
 import Section3 from '../LandingPageComp/Section3';
 
 const LandingPage = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : null;
+
+    if (token && user) {
+      if (user.role === 'vendor') {
+        navigate('/Ven_Dashboard');
+      } else if (user.role === 'customer') {
+        navigate('/dashboard');
+      }
+    }
+  }, [navigate]);
+
   return (
     <div>
       <div className='fixed top-0 left-0 w-full z-50 bg-white shadow-md'>

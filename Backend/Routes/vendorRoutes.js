@@ -19,6 +19,8 @@ router.get('/communications', authMiddleware, vendorController.getCommunicationD
 router.put('/update-menu', authMiddleware, vendorController.updateWeeklyMenu);
 router.post('/post-announcement', authMiddleware, vendorController.postAnnouncement);
 router.get('/deliveries/today', authMiddleware, vendorController.getDailyDeliveryList);
+// Manual trigger for testing delivery updates (development only)
+router.post('/deliveries/trigger-update', authMiddleware, vendorController.triggerDeliveryUpdate);
 // Vendor Profile Settings Routes
 router.get('/profile', authMiddleware, vendorController.getVendorProfileSettings);
 router.put('/profile', authMiddleware, vendorController.updateVendorProfileSettings);

@@ -2,6 +2,16 @@ const mongoose = require('mongoose');
 
 const vendorProfileSchema = new mongoose.Schema({
   vendorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  
+  // Approval status
+  status: { 
+    type: String, 
+    enum: ['pending', 'approved', 'rejected'], 
+    default: 'pending' 
+  },
+  approvalDate: { type: Date },
+  rejectionReason: { type: String },
+
   // ... existing fields (businessName, pricing, etc.) ...
 
   // 1. ADD THE WEEKLY MENU TEMPLATE

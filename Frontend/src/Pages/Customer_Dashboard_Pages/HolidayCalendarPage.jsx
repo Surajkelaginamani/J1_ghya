@@ -10,6 +10,10 @@ const HolidayCalendarPage = () => {
   const [holidays, setHolidays] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  // --- NEW STATE FOR TIME SELECTION ---
+  const [showTimeModal, setShowTimeModal] = useState(false);
+  const [pendingHolidayDate, setPendingHolidayDate] = useState(null);
+  const [selectedTime, setSelectedTime] = useState('full_day');
 
   const normalizeDateKey = (value) => {
     if (!value) return null;
@@ -60,10 +64,29 @@ const HolidayCalendarPage = () => {
     const selectedSub = subscriptions.find(sub => sub._id === activeSubscriptionId);
     
     if (selectedSub) {
-      const normalized = (selectedSub.skippedDates || [])
-        .map(normalizeDateKey)
+      const customerSkips = (selectedSub.skippedDates || [])
+        .map(holiday => {
+          if (typeof holiday === 'string') {
+            // Legacy format
+            return { date: normalizeDateKey(holiday), time: 'full_day' };
+          } else if (typeof holiday === 'object' && holiday.date) {
+            // New format
+            return {
+              date: normalizeDateKey(holiday.date),
+              time: holiday.time || 'full_day'
+            };
+          }
+          return null;
+        })
         .filter(Boolean);
-      setHolidays([...new Set(normalized)].sort());
+      const vendorSkips = (selectedSub.vendorHolidays || [])
+        .map(holiday => ({
+          date: normalizeDateKey(holiday.dateKey),
+          time: holiday.time || 'full_day'
+        }))
+        .filter(h => h.date);
+
+      setHolidays([...customerSkips, ...vendorSkips].sort((a, b) => a.date.localeCompare(b.date)));
     }
   }, [activeSubscriptionId, subscriptions]);
 
@@ -75,7 +98,12 @@ const HolidayCalendarPage = () => {
     const [year, month, day] = String(dateKey).split('-').map(Number);
     return new Date(year, month - 1, day);
   };
-  const isHoliday = (day) => holidays.includes(formatDateKey(day));
+  const isHoliday = (day) => {
+    const dateKey = formatDateKey(day);
+    return holidays.some(h => 
+      typeof h === 'object' ? h.date === dateKey : h === dateKey
+    );
+  };
 
   const handlePrevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
   const handleNextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
@@ -85,6 +113,13 @@ const HolidayCalendarPage = () => {
     if (!activeSubscriptionId) return alert("Please select a subscription first.");
 
     const dateKey = formatDateKey(day);
+    const selectedSub = subscriptions.find(sub => sub._id === activeSubscriptionId);
+
+    if (selectedSub?.vendorHolidays?.some(h => (typeof h === 'object' ? h.dateKey : h) === dateKey)) {
+      alert("This date is a vendor holiday and cannot be changed here.");
+      return;
+    }
+
     const selectedDateObj = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
 
     const todayStart = new Date();
@@ -94,11 +129,39 @@ const HolidayCalendarPage = () => {
       return;
     }
 
-    const updatedHolidays = holidays.includes(dateKey) 
-      ? holidays.filter(h => h !== dateKey) 
-      : [...holidays, dateKey].sort();
+    // Show time selection modal
+    setPendingHolidayDate(dateKey);
+    setSelectedTime('full_day');
+    setShowTimeModal(true);
+  };
+
+  const confirmHoliday = async () => {
+    if (!pendingHolidayDate || !activeSubscriptionId) return;
+
+    const selectedSub = subscriptions.find(sub => sub._id === activeSubscriptionId);
+    const isCurrentlyHoliday = holidays.some(h => 
+      typeof h === 'object' ? h.date === pendingHolidayDate : h === pendingHolidayDate
+    );
+
+    let updatedHolidays;
+    if (isCurrentlyHoliday) {
+      // Remove holiday
+      updatedHolidays = holidays.filter(h => 
+        typeof h === 'object' ? h.date !== pendingHolidayDate : h !== pendingHolidayDate
+      );
+    } else {
+      // Add new holiday with time
+      const newHoliday = { date: pendingHolidayDate, time: selectedTime };
+      updatedHolidays = [...holidays, newHoliday].sort((a, b) => {
+        const dateA = typeof a === 'object' ? a.date : a;
+        const dateB = typeof b === 'object' ? b.date : b;
+        return dateA.localeCompare(dateB);
+      });
+    }
     
     setHolidays(updatedHolidays);
+    setShowTimeModal(false);
+    setPendingHolidayDate(null);
     saveHolidaysToBackend(updatedHolidays);
   };
 
@@ -111,7 +174,9 @@ const HolidayCalendarPage = () => {
       return;
     }
 
-    const updatedHolidays = holidays.filter(h => h !== dateString);
+    const updatedHolidays = holidays.filter(h => 
+      typeof h === 'object' ? h.date !== dateString : h !== dateString
+    );
     setHolidays(updatedHolidays);
     saveHolidaysToBackend(updatedHolidays);
   };
@@ -134,18 +199,29 @@ const HolidayCalendarPage = () => {
       const result = await response.json();
       if (!response.ok) throw new Error(result?.message || "Failed to save holidays");
 
-      const savedDates = (result?.subscription?.skippedDates || updatedHolidays)
-        .map(normalizeDateKey)
+      const savedHolidays = (result?.subscription?.skippedDates || updatedHolidays)
+        .map(holiday => {
+          if (typeof holiday === 'string') {
+            return { date: normalizeDateKey(holiday), time: 'full_day' };
+          } else if (typeof holiday === 'object' && holiday.date) {
+            return {
+              date: normalizeDateKey(holiday.date),
+              time: holiday.time || 'full_day'
+            };
+          }
+          return null;
+        })
         .filter(Boolean)
-        .sort();
-      setHolidays(savedDates);
+        .sort((a, b) => a.date.localeCompare(b.date));
+      
+      setHolidays(savedHolidays);
       if (Array.isArray(result?.ignoredDates) && result.ignoredDates.length > 0) {
         alert("Some past dates were not saved.");
       }
 
       // Update local state so if they switch dropdowns and come back, the data is preserved
       setSubscriptions(prev => prev.map(sub => 
-        sub._id === activeSubscriptionId ? { ...sub, skippedDates: savedDates } : sub
+        sub._id === activeSubscriptionId ? { ...sub, skippedDates: savedHolidays } : sub
       ));
 
     } catch (error) {
@@ -160,7 +236,10 @@ const HolidayCalendarPage = () => {
   const currentYear = currentDate.getFullYear();
   const paddingDays = Array.from({ length: getFirstDayOfMonth(currentDate) });
   const daysArray = Array.from({ length: getDaysInMonth(currentDate) }, (_, i) => i + 1);
-  const holidaysInCurrentMonth = holidays.filter(h => h.startsWith(`${currentYear}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`)).length;
+  const holidaysInCurrentMonth = holidays.filter(h => {
+    const dateKey = typeof h === 'object' ? h.date : h;
+    return dateKey.startsWith(`${currentYear}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`);
+  }).length;
 
   return (
     <>
@@ -237,9 +316,18 @@ const HolidayCalendarPage = () => {
           <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
             <h3 className="font-bold text-gray-900 mb-6">Upcoming Holidays</h3>
             <div className="space-y-6">
-              {holidays.slice(0, 5).map(date => (
-                <HolidayItem key={date} date={new Date(date).toDateString()} name="Meal Skipped" onRemove={() => removeHoliday(date)} />
-              ))}
+              {holidays.slice(0, 5).map(holiday => {
+                const dateKey = typeof holiday === 'object' ? holiday.date : holiday;
+                const holidayObj = typeof holiday === 'object' ? holiday : { date: holiday, time: 'full_day' };
+                return (
+                  <HolidayItem 
+                    key={dateKey} 
+                    date={new Date(dateKey).toDateString()} 
+                    name={holidayObj} 
+                    onRemove={() => removeHoliday(dateKey)} 
+                  />
+                );
+              })}
               {holidays.length === 0 && <p className="text-gray-400 text-sm">No upcoming holidays for this service.</p>}
             </div>
           </div>
@@ -255,18 +343,84 @@ const HolidayCalendarPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Time Selection Modal */}
+      {showTimeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Select Holiday Time</h3>
+            <p className="text-gray-600 text-sm mb-6">
+              When would you like to mark holiday for {pendingHolidayDate ? new Date(pendingHolidayDate).toDateString() : ''}?
+            </p>
+            
+            <div className="space-y-3 mb-6">
+              {[
+                { value: 'full_day', label: 'Full Day', desc: 'Skip both morning and afternoon deliveries' },
+                { value: 'morning', label: 'Morning Only', desc: 'Skip morning delivery only' },
+                { value: 'afternoon', label: 'Afternoon Only', desc: 'Skip afternoon delivery only' },
+                { value: 'evening', label: 'Evening Only', desc: 'Skip evening delivery only' }
+              ].map(option => (
+                <label key={option.value} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                  <input
+                    type="radio"
+                    name="holidayTime"
+                    value={option.value}
+                    checked={selectedTime === option.value}
+                    onChange={(e) => setSelectedTime(e.target.value)}
+                    className="text-orange-500 focus:ring-orange-500"
+                  />
+                  <div>
+                    <p className="font-semibold text-gray-900">{option.label}</p>
+                    <p className="text-xs text-gray-500">{option.desc}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+            
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowTimeModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmHoliday}
+                className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
 
-const HolidayItem = ({ date, name, onRemove }) => (
-  <div className="flex items-center justify-between group">
-    <div>
-      <p className="font-bold text-gray-900 text-sm">{date}</p>
-      <p className="text-gray-500 text-xs">{name}</p>
+const HolidayItem = ({ date, name, onRemove }) => {
+  const getTimeLabel = (holiday) => {
+    if (typeof holiday === 'object' && holiday.time) {
+      switch (holiday.time) {
+        case 'morning': return 'Morning';
+        case 'afternoon': return 'Afternoon';
+        case 'evening': return 'Evening';
+        case 'full_day': return 'Full Day';
+        default: return 'Full Day';
+      }
+    }
+    return 'Full Day';
+  };
+
+  return (
+    <div className="flex items-center justify-between group">
+      <div>
+        <p className="font-bold text-gray-900 text-sm">{date}</p>
+        <p className="text-gray-500 text-xs">Meal Skipped - {getTimeLabel(name)}</p>
+      </div>
+      <button onClick={onRemove} className="text-red-500 text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity hover:underline">Remove</button>
     </div>
-    <button onClick={onRemove} className="text-red-500 text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity hover:underline">Remove</button>
-  </div>
-);
+  );
+};
 
 export default HolidayCalendarPage;

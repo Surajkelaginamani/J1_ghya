@@ -53,8 +53,9 @@ const CoustomerForm = () => {
 
       // FIXED LOGIC: Only navigate IF response is actually ok
       if (response.ok) {
-        // Save the JWT token to local storage so they stay logged in
+        // Save the full auth session so refresh/reopen keeps the user logged in
         localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
         navigate("/dashboard"); 
       } else {
         alert(data.message || data.error || "Registration failed");

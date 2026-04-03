@@ -24,6 +24,10 @@ mongoose.connect(process.env.MONGODB_URI)
     } catch (indexError) {
       console.error('Error syncing DeliveryStatus indexes:', indexError);
     }
+
+    // Initialize delivery scheduler after DB connection
+    const deliveryScheduler = require('./services/deliveryScheduler');
+    deliveryScheduler.init();
   })
   .catch((err) => console.error('MongoDB Connection Error:', err));
 

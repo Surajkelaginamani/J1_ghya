@@ -39,6 +39,7 @@ import Analytics from './Pages/Vendors_Dashboard_components/Analytics.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx' // Make sure this path is correct based on where you save it!
 import VendorDetailsPage from './Pages/Customer_Dashboard_Pages/VendorDetailsPage.jsx'
 import VendorProfilePage from './Pages/Vendors_Dashboard_components/VendorProfilePage.jsx'
+import AdminDashboard from './Pages/AdminDashboard.jsx'
 
 const App = () => {
   return (
@@ -92,6 +93,13 @@ const App = () => {
           <Route path="/homemade-orders" element={<HomemadeOrdersPage/>} />
           <Route path="/analytics" element={<Analytics/>}/>
            <Route path="/vendor-profile" element={<VendorProfilePage/>}/>
+        </Route>
+
+        {/* ============================== */}
+        {/* 4. SECURE ADMIN ROUTES         */}
+        {/* ============================== */}
+        <Route element={<ProtectedRoute allowedRole="admin" />}>
+          <Route path="/admin-dashboard" element={<AdminDashboard />} />
         </Route>
      
       </Routes>

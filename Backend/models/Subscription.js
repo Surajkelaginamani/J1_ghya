@@ -21,9 +21,12 @@ const subscriptionSchema = new mongoose.Schema({
     enum: ['pending', 'active', 'paused', 'cancelled', 'expired'], 
     default: 'pending' 
   },
-  // Stores skipped dates in YYYY-MM-DD format to match frontend calendar keys
+  // Stores skipped dates with time options
   skippedDates: {
-    type: [String],
+    type: [{
+      date: { type: String, required: true }, // YYYY-MM-DD
+      time: { type: String, enum: ['morning', 'afternoon', 'evening', 'full_day'], default: 'full_day' }
+    }],
     default: []
   },
 paymentStatus: { 

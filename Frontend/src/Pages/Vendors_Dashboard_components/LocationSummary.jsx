@@ -25,10 +25,41 @@ const LocationSummary = () => {
   const [markingDeliveryId, setMarkingDeliveryId] = useState('');
   const [resettingDeliveries, setResettingDeliveries] = useState(false);
 
+  const normalizeStudents = (students) => {
+    if (Array.isArray(students)) return students;
+    if (!students || typeof students !== 'object') return [];
+    if (students.customerName || students.subscriptionId) return [students];
+    if (Array.isArray(students.students)) return students.students;
+    if (Array.isArray(students.entries)) return students.entries;
+    if (Array.isArray(students.items)) return students.items;
+
+    return Object.values(students).flatMap((entry) => {
+      if (Array.isArray(entry)) return entry;
+      if (entry && typeof entry === 'object') {
+        if (entry.customerName || entry.subscriptionId) return [entry];
+        if (Array.isArray(entry.students)) return entry.students;
+        if (Array.isArray(entry.entries)) return entry.entries;
+        if (Array.isArray(entry.items)) return entry.items;
+      }
+      return [];
+    });
+  };
+
+  const getStudentCount = (students, studentList) => {
+    if (Array.isArray(students)) return students.length;
+    if (!students || typeof students !== 'object') return studentList.length;
+    if (typeof students.totalCount === 'number') return students.totalCount;
+    if (typeof students.count === 'number') return students.count;
+    if (typeof students.totalDeliveries === 'number') return students.totalDeliveries;
+    return studentList.length;
+  };
+
   const buildLocations = (groupedList = {}) => Object.entries(groupedList).map(([locationName, students], index) => {
+    const studentList = normalizeStudents(students);
+    const totalTiffins = getStudentCount(students, studentList);
     let vegCount = 0;
     let nonVegCount = 0;
-    students.forEach((s) => {
+    studentList.forEach((s) => {
       if (s.mealType && s.mealType.toLowerCase().includes('non')) nonVegCount++;
       else vegCount++;
     });
@@ -37,10 +68,10 @@ const LocationSummary = () => {
       id: `${locationName}-${index}`,
       name: locationName,
       type: 'Delivery Area',
-      totalTiffins: students.length,
+      totalTiffins,
       breakdown: { veg: vegCount, nonVeg: nonVegCount },
       isExpanded: false,
-      students: students.map((s) => ({
+      students: studentList.map((s) => ({
         subscriptionId: s.subscriptionId,
         mealSlot: s.mealSlot,
         name: s.customerName,
@@ -62,6 +93,26 @@ const LocationSummary = () => {
 
       if (response.ok) {
         const data = await response.json();
+        const resolvedSession =
+          data.currentSession === 'morning' || data.currentSession === 'afternoon'
+            ? data.currentSession
+            : activeMealSession;
+        const selectedSessionPreview = (data.sessions && data.sessions[resolvedSession]) || { groupedList: {} };
+        const firstLocationEntry = Object.entries(selectedSessionPreview.groupedList || {})[0];
+
+        console.log('LocationSummary deliveries payload:', {
+          currentSession: data.currentSession,
+          resolvedSession,
+          totalDeliveries: data.totalDeliveries,
+          sessionTotals: {
+            morning: data.sessions?.morning?.totalDeliveries,
+            afternoon: data.sessions?.afternoon?.totalDeliveries
+          },
+          firstLocationEntry
+        });
+        console.log('LocationSummary first location name:', firstLocationEntry?.[0]);
+        console.log('LocationSummary first location raw payload:', firstLocationEntry?.[1]);
+
         setTotalDeliveriesToday(data.totalDeliveries);
         setHolidayInfo({
           isVendorHoliday: Boolean(data.isVendorHoliday),
@@ -76,8 +127,12 @@ const LocationSummary = () => {
           afternoon: { totalDeliveries: 0, groupedList: {} }
         });
 
-        const selectedSession = (data.sessions && data.sessions[activeMealSession]) || { groupedList: {} };
-        const selectedDeliveredSession = (data.deliveredSessions && data.deliveredSessions[activeMealSession]) || { groupedList: {} };
+        if (resolvedSession !== activeMealSession) {
+          setActiveMealSession(resolvedSession);
+        }
+
+        const selectedSession = selectedSessionPreview;
+        const selectedDeliveredSession = (data.deliveredSessions && data.deliveredSessions[resolvedSession]) || { groupedList: {} };
         setLocations(buildLocations(selectedSession.groupedList));
         setDeliveredLocations(buildLocations(selectedDeliveredSession.groupedList));
       }

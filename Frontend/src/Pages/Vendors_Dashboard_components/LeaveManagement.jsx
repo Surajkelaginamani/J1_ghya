@@ -11,6 +11,7 @@ const LeaveManagement = () => {
   const [holidays, setHolidays] = useState([]);
   const [newDate, setNewDate] = useState('');
   const [newReason, setNewReason] = useState('');
+  const [newTime, setNewTime] = useState('full_day');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -70,7 +71,7 @@ const LeaveManagement = () => {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ date: newDate, reason: newReason })
+        body: JSON.stringify({ date: newDate, reason: newReason, time: newTime })
       });
 
       const data = await parseApiResponse(response);
@@ -82,6 +83,7 @@ const LeaveManagement = () => {
       alert(data.message || 'Holiday marked successfully.');
       setNewDate('');
       setNewReason('');
+      setNewTime('full_day');
       fetchHolidays();
     } catch (error) {
       console.error('Error adding holiday:', error);
@@ -195,6 +197,20 @@ const LeaveManagement = () => {
                     placeholder="e.g., Kitchen Maintenance"
                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Time Period</label>
+                  <select
+                    value={newTime}
+                    onChange={(e) => setNewTime(e.target.value)}
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700 font-medium"
+                  >
+                    <option value="full_day">Full Day</option>
+                    <option value="morning">Morning Only</option>
+                    <option value="afternoon">Afternoon Only</option>
+                    <option value="evening">Evening Only</option>
+                  </select>
                 </div>
 
                 <div className="pt-2">

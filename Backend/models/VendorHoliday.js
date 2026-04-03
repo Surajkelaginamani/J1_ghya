@@ -11,6 +11,11 @@ const vendorHolidaySchema = new mongoose.Schema(
       type: String,
       required: true
     },
+    time: {
+      type: String,
+      enum: ['morning', 'afternoon', 'evening', 'full_day'],
+      default: 'full_day'
+    },
     reason: {
       type: String,
       default: ''

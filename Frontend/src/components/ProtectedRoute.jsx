@@ -1,24 +1,94 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 
 const ProtectedRoute = ({ allowedRole }) => {
-  // 1. Check if the user has a token
   const token = localStorage.getItem('token');
-  const userString = localStorage.getItem('user');
-  const user = userString ? JSON.parse(userString) : null;
+  const [user, setUser] = useState(() => {
+    const userString = localStorage.getItem('user');
+    return userString ? JSON.parse(userString) : null;
+  });
+  const [isCheckingSession, setIsCheckingSession] = useState(Boolean(token && !user));
 
-  // 2. If no token or user data, kick them to login
-  if (!token || !user) {
+  useEffect(() => {
+    let isMounted = true;
+
+    const restoreSession = async () => {
+      if (!token || user) {
+        setIsCheckingSession(false);
+        return;
+      }
+
+      try {
+        const response = await fetch('http://localhost:5000/api/auth/me', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+          if (response.status === 401 || response.status === 403) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            if (isMounted) setUser(null);
+          } else {
+            const storedUser = localStorage.getItem('user');
+            if (storedUser) {
+              if (isMounted) setUser(JSON.parse(storedUser));
+            } else if (isMounted) {
+              setUser(null);
+            }
+          }
+          return;
+        }
+
+        const restoredUser = await response.json();
+        const normalizedUser = {
+          id: restoredUser._id || restoredUser.id,
+          name: restoredUser.name,
+          email: restoredUser.email,
+          role: restoredUser.role
+        };
+
+        localStorage.setItem('user', JSON.stringify(normalizedUser));
+        if (isMounted) {
+          setUser(normalizedUser);
+        }
+      } catch (error) {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          if (isMounted) setUser(JSON.parse(storedUser));
+        } else if (isMounted) {
+          setUser(null);
+        }
+      } finally {
+        if (isMounted) {
+          setIsCheckingSession(false);
+        }
+      }
+    };
+
+    restoreSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [token, user]);
+
+  if (!token) {
     return <Navigate to="/login" replace />;
   }
 
-  // 3. If they are trying to access a dashboard that doesn't belong to their role
+  if (isCheckingSession) {
+    return null;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
   if (allowedRole && user.role !== allowedRole.toLowerCase()) {
     alert("Unauthorized access. Redirecting to home.");
     return <Navigate to="/" replace />;
   }
 
-  // 4. If everything is good, render the protected pages!
   return <Outlet />;
 };
 

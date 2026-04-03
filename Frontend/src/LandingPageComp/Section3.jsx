@@ -4,6 +4,7 @@ const Section3 = () => {
     const productCategories = [
     "Pickles", "Papad", "Snacks", "Spices", "Sweets"
   ];
+  
   return (
    <div className="font-sans text-gray-900">
       

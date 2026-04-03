@@ -1,10 +1,24 @@
-import { useState } from "react";
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShoppingBag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const LoginPage = () => {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : null;
+
+    if (token && user) {
+      if (user.role === 'vendor') {
+        navigate('/Ven_Dashboard');
+      } else if (user.role === 'customer') {
+        navigate('/dashboard');
+      } else if (user.role === 'admin') {
+        navigate('/admin-dashboard');
+      }
+    }
+  }, [navigate]);
   
   // UI State for the toggle switch (Customer, Vendor, Admin)
   const [userType, setUserType] = useState('Customer');
@@ -52,6 +66,8 @@ const LoginPage = () => {
           navigate("/Ven_Dashboard");
         } else if (data.user.role === 'customer') {
           navigate("/dashboard"); 
+        } else if (data.user.role === 'admin') {
+          navigate("/admin-dashboard");
         } else {
           navigate("/"); 
         }

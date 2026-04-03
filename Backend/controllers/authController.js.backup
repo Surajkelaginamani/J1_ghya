@@ -207,12 +207,6 @@ exports.approveVendor = async (req, res) => {
       }
     });
 
-  } catch (error) {
-    console.error("Approve Vendor Error:", error);
-    res.status(500).json({ message: 'Server error during vendor approval' });
-  }
-};
-
 // --- 5. GET PENDING VENDORS (Admin Only) ---
 exports.getPendingVendors = async (req, res) => {
   try {
@@ -221,19 +215,11 @@ exports.getPendingVendors = async (req, res) => {
       return res.status(403).json({ message: 'Only admins can view pending vendors' });
     }
 
-    const pendingVendors = await VendorProfile.find({
-      $or: [
-        { status: 'pending' },
-        { status: { $exists: false } },
-        { status: null }
-      ]
-    })
+    const pendingVendors = await VendorProfile.find({ status: 'pending' })
       .populate('vendorId', 'name email phone')
       .sort({ createdAt: -1 });
 
-    const formattedVendors = pendingVendors
-      .filter((vendor) => vendor.vendorId)
-      .map(vendor => ({
+    const formattedVendors = pendingVendors.map(vendor => ({
       id: vendor.vendorId._id,
       businessName: vendor.businessName,
       ownerName: vendor.vendorId.name,
@@ -242,7 +228,7 @@ exports.getPendingVendors = async (req, res) => {
       location: vendor.serviceArea,
       foodType: vendor.foodType === 'veg' ? 'Pure Veg' : vendor.foodType === 'nonveg' ? 'Non-Veg' : 'Veg & Non-Veg',
       appliedDate: vendor.createdAt.toLocaleDateString('en-IN'),
-      status: vendor.status || 'pending'
+      status: 'Awaiting Contact'
     }));
 
     res.status(200).json({
@@ -253,39 +239,5 @@ exports.getPendingVendors = async (req, res) => {
   } catch (error) {
     console.error("Get Pending Vendors Error:", error);
     res.status(500).json({ message: 'Server error retrieving pending vendors' });
-  }
-};
-
-// --- 6. GET APPROVED VENDORS (Admin Only) ---
-exports.getApprovedVendors = async (req, res) => {
-  try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Only admins can view approved vendors' });
-    }
-
-    const approvedVendors = await VendorProfile.find({ status: 'approved' })
-      .populate('vendorId', 'name email phone')
-      .sort({ updatedAt: -1 });
-
-    const formattedVendors = approvedVendors.map(vendor => ({
-      id: vendor.vendorId._id,
-      businessName: vendor.businessName,
-      ownerName: vendor.vendorId.name,
-      phone: vendor.vendorId.phone,
-      email: vendor.vendorId.email,
-      location: vendor.serviceArea,
-      foodType: vendor.foodType === 'veg' ? 'Pure Veg' : vendor.foodType === 'nonveg' ? 'Non-Veg' : 'Veg & Non-Veg',
-      activeSince: vendor.approvalDate ? new Date(vendor.approvalDate).toLocaleDateString('en-IN') : 'N/A',
-      status: vendor.status
-    }));
-
-    res.status(200).json({
-      message: 'Approved vendors retrieved successfully',
-      vendors: formattedVendors
-    });
-
-  } catch (error) {
-    console.error("Get Approved Vendors Error:", error);
-    res.status(500).json({ message: 'Server error retrieving approved vendors' });
   }
 };

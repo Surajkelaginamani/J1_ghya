@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema({
   phone: { type: String, required: true },
   role: { 
     type: String, 
-    enum: ['customer', 'vendor'], 
+    enum: ['customer', 'vendor', 'admin'], 
     required: true 
   },
   // Customer specific fields

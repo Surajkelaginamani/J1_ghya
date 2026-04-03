@@ -18,19 +18,30 @@ const SubscriptionsPage = () => {
   };
 
 // 2. Calculate days left and progress (UPDATED WITH HOLIDAY LOGIC)
-  const getSubscriptionStats = (sub) => {
-    // Determine the base duration (e.g., 30 days)
+  const getEffectiveEndDate = (sub) => {
     const baseDuration = getPlanDuration(sub.planType);
-    
-    // Count how many holidays the student has marked
-    // Assume backend provides sub.skippedDates = ['2026-03-08', '2026-03-09']
     const skippedDaysCount = sub.skippedDates ? sub.skippedDates.length : 0;
-    
-    const startDate = new Date(sub.startDate || sub.updatedAt || sub.createdAt);
-    const fallbackEndDate = new Date(startDate);
-    fallbackEndDate.setDate(fallbackEndDate.getDate() + baseDuration + skippedDaysCount);
-    const endDate = sub.endDate ? new Date(sub.endDate) : fallbackEndDate;
 
+    const startDate = new Date(sub.startDate || sub.updatedAt || sub.createdAt);
+    const baselineEndDate = new Date(startDate);
+    baselineEndDate.setDate(baselineEndDate.getDate() + baseDuration + skippedDaysCount);
+
+    if (sub.endDate) {
+      const serverEndDate = new Date(sub.endDate);
+      // If the server already pushed endDate ahead (vendor holidays + manual extensions), keep the latest
+      return serverEndDate > baselineEndDate ? serverEndDate : baselineEndDate;
+    }
+
+    return baselineEndDate;
+  };
+
+  const getSubscriptionStats = (sub) => {
+    const baseDuration = getPlanDuration(sub.planType);
+    const skippedDaysCount = sub.skippedDates ? sub.skippedDates.length : 0;
+
+    const startDate = new Date(sub.startDate || sub.updatedAt || sub.createdAt);
+    const endDate = getEffectiveEndDate(sub);
+    
     const today = new Date();
     
     // Calculate difference in days between today and the new extended end date
@@ -50,7 +61,8 @@ const SubscriptionsPage = () => {
       totalDays: calendarSpan,
       daysLeft: safeDaysLeft, // How many calendar days until it expires
       progressPercentage,
-      isExpiringSoon: safeDaysLeft > 0 && safeDaysLeft <= 3,
+      skippedDays: skippedDaysCount,
+      baseDuration,
       isExpired: safeDaysLeft === 0
     };
   };
@@ -169,6 +181,10 @@ const SubscriptionsPage = () => {
                         <span className="text-gray-600 font-medium">
                           {stats.endDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                         </span>
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>Plan: {stats.baseDuration} days</span>
+                        <span>Skipped Holidays: {stats.skippedDays}</span>
                       </div>
                       
                       {/* Progress Bar */}

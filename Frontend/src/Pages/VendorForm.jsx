@@ -72,8 +72,9 @@ const VendorForm = () => {
       const data = await response.json();
 
       if (response.ok) {
-        alert("Vendor Registration Successful! Welcome to MealMitra.");
-        localStorage.setItem('token', data.token); // Save their session
+        alert("Vendor registration submitted successfully. Your dashboard will stay locked until an admin approves your request.");
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
         navigate("/Ven_Dashboard"); // Navigate to their new dashboard
       } else {
         alert(data.message || "Registration failed");
