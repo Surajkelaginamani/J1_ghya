@@ -18,9 +18,9 @@ const HomemadeOrdersPage = () => {
       const headers = { Authorization: `Bearer ${token}` };
 
       const [orderRes, itemRes, logRes] = await Promise.all([
-        fetch('http://localhost:5000/api/vendor/homemade-orders', { headers }),
-        fetch('http://localhost:5000/api/vendor/homemade-items', { headers }),
-        fetch('http://localhost:5000/api/vendor/homemade-stock-logs', { headers })
+        fetch('https://meal-mitra-vhcd.onrender.com/api/vendor/homemade-orders', { headers }),
+        fetch('https://meal-mitra-vhcd.onrender.com/api/vendor/homemade-items', { headers }),
+        fetch('https://meal-mitra-vhcd.onrender.com/api/vendor/homemade-stock-logs', { headers })
       ]);
 
       if (orderRes.ok) setOrders(await orderRes.json());
@@ -51,7 +51,7 @@ const HomemadeOrdersPage = () => {
   const updateOrderStatus = async (orderId, status) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/vendor/homemade-orders/${orderId}/status`, {
+      const response = await fetch(`https://meal-mitra-vhcd.onrender.com/api/vendor/homemade-orders/${orderId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -79,7 +79,7 @@ const HomemadeOrdersPage = () => {
       }
 
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/vendor/homemade-items/${itemId}/restock`, {
+      const response = await fetch(`https://meal-mitra-vhcd.onrender.com/api/vendor/homemade-items/${itemId}/restock`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -250,3 +250,4 @@ const HomemadeOrdersPage = () => {
 };
 
 export default HomemadeOrdersPage;
+

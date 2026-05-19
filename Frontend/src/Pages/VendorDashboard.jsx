@@ -100,7 +100,7 @@ const VendorDashboard = () => {
       }
 
       // First check vendor approval status
-      const profileRes = await fetch('http://localhost:5000/api/vendor/profile', {
+      const profileRes = await fetch('https://meal-mitra-vhcd.onrender.com/api/vendor/profile', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -123,11 +123,11 @@ const VendorDashboard = () => {
         }
       }
 
-      const dashRes = await fetch('http://localhost:5000/api/vendor/dashboard', {
+      const dashRes = await fetch('https://meal-mitra-vhcd.onrender.com/api/vendor/dashboard', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
-      const deliveryRes = await fetch('http://localhost:5000/api/vendor/deliveries/today', {
+      const deliveryRes = await fetch('https://meal-mitra-vhcd.onrender.com/api/vendor/deliveries/today', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -176,7 +176,7 @@ const VendorDashboard = () => {
     try {
       setMarkingDeliveryId(actionKey);
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/vendor/deliveries/${subscriptionId}/mark-delivered`, {
+      const response = await fetch(`https://meal-mitra-vhcd.onrender.com/api/vendor/deliveries/${subscriptionId}/mark-delivered`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -207,7 +207,7 @@ const VendorDashboard = () => {
     try {
       setResettingDeliveries(true);
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/vendor/deliveries/reset', {
+      const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/vendor/deliveries/reset', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -641,3 +641,4 @@ const ActionCard = ({ icon, label, color, bg, onClick }) => (
 );
 
 export default VendorDashboard;
+

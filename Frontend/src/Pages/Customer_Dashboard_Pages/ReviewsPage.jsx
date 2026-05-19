@@ -25,7 +25,7 @@ const ReviewsPage = () => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
-    const response = await fetch('http://localhost:5000/api/customer/reviews', {
+    const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/customer/reviews', {
       headers: { Authorization: `Bearer ${token}` }
     });
     const data = await response.json();
@@ -43,7 +43,7 @@ const ReviewsPage = () => {
         if (!token) return;
 
         const [vendorsResponse] = await Promise.all([
-          fetch('http://localhost:5000/api/customer/vendors', {
+          fetch('https://meal-mitra-vhcd.onrender.com/api/customer/vendors', {
             headers: { Authorization: `Bearer ${token}` }
           }),
           loadReviews()
@@ -96,7 +96,7 @@ const ReviewsPage = () => {
     setIsSubmitting(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/customer/reviews', {
+      const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/customer/reviews', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -127,7 +127,7 @@ const ReviewsPage = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/customer/reviews/${reviewId}`, {
+      const response = await fetch(`https://meal-mitra-vhcd.onrender.com/api/customer/reviews/${reviewId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -331,4 +331,5 @@ const ReviewCard = ({ name, vendor, date, rating, text }) => (
 );
 
 export default ReviewsPage;
+
 

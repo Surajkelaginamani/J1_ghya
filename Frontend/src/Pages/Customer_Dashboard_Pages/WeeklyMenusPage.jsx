@@ -14,7 +14,7 @@ const WeeklyMenusPage = () => {
     const fetchMenus = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:5000/api/customer/subscribed-weekly-menus', {
+        const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/customer/subscribed-weekly-menus', {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = await response.json();
@@ -99,3 +99,4 @@ const WeeklyMenusPage = () => {
 };
 
 export default WeeklyMenusPage;
+

@@ -48,7 +48,7 @@ const VendorForm = () => {
 
     try {
       // Send data to Node.js backend
-      const response = await fetch('http://localhost:5000/api/auth/register', {
+      const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -221,3 +221,4 @@ const VendorForm = () => {
 }
 
 export default VendorForm;
+

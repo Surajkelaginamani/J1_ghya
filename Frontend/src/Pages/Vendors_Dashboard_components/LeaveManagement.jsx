@@ -24,7 +24,7 @@ const LeaveManagement = () => {
   const fetchHolidays = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/vendor/holidays', {
+      const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/vendor/holidays', {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -65,7 +65,7 @@ const LeaveManagement = () => {
     setIsSubmitting(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/vendor/holidays', {
+      const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/vendor/holidays', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -102,7 +102,7 @@ const LeaveManagement = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/vendor/holidays/${holidayId}`, {
+      const response = await fetch(`https://meal-mitra-vhcd.onrender.com/api/vendor/holidays/${holidayId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -288,3 +288,4 @@ const LeaveManagement = () => {
 };
 
 export default LeaveManagement;
+

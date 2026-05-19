@@ -24,7 +24,7 @@ const AllCustomers = () => {
       const token = localStorage.getItem('token');
       if (!token) return Navigate('/login');
 
-      const response = await fetch('http://localhost:5000/api/vendor/payments', {
+      const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/vendor/payments', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -51,7 +51,7 @@ const AllCustomers = () => {
     setIsProcessing(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/vendor/payments/${subscriptionId}/mark-paid`, {
+      const response = await fetch(`https://meal-mitra-vhcd.onrender.com/api/vendor/payments/${subscriptionId}/mark-paid`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -362,3 +362,4 @@ const AllCustomers = () => {
 };
 
 export default AllCustomers;
+

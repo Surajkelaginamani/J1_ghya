@@ -20,10 +20,10 @@ const HomemadeStorePage = () => {
       }
 
       const [itemsRes, ordersRes] = await Promise.all([
-        fetch('http://localhost:5000/api/customer/homemade-items', {
+        fetch('https://meal-mitra-vhcd.onrender.com/api/customer/homemade-items', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        fetch('http://localhost:5000/api/customer/homemade-orders', {
+        fetch('https://meal-mitra-vhcd.onrender.com/api/customer/homemade-orders', {
           headers: { Authorization: `Bearer ${token}` }
         })
       ]);
@@ -54,7 +54,7 @@ const HomemadeStorePage = () => {
       const token = localStorage.getItem('token');
       const quantity = Math.max(1, Number(quantities[itemId] || 1));
 
-      const response = await fetch('http://localhost:5000/api/customer/homemade-orders', {
+      const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/customer/homemade-orders', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -199,3 +199,4 @@ const HomemadeStorePage = () => {
 };
 
 export default HomemadeStorePage;
+

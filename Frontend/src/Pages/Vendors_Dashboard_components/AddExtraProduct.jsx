@@ -33,7 +33,7 @@ const AddExtraProduct = () => {
   const fetchItems = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/vendor/homemade-items', {
+      const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/vendor/homemade-items', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.ok) {
@@ -58,7 +58,7 @@ const AddExtraProduct = () => {
     try {
       setIsSaving(true);
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/vendor/homemade-items', {
+      const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/vendor/homemade-items', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -91,7 +91,7 @@ const AddExtraProduct = () => {
       alert('Item added to inventory.');
     } catch (error) {
       console.error('Error adding inventory item:', error);
-      alert(`Request failed: ${error.message}. Check backend server on http://localhost:5000.`);
+      alert(`Request failed: ${error.message}. Check backend server on https://meal-mitra-vhcd.onrender.com.`);
     } finally {
       setIsSaving(false);
     }
@@ -100,7 +100,7 @@ const AddExtraProduct = () => {
   const updateItem = async (itemId, patch) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/vendor/homemade-items/${itemId}`, {
+      const response = await fetch(`https://meal-mitra-vhcd.onrender.com/api/vendor/homemade-items/${itemId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -293,3 +293,4 @@ const AddExtraProduct = () => {
 };
 
 export default AddExtraProduct;
+

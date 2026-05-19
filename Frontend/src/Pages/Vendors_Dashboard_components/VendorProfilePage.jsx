@@ -33,7 +33,7 @@ const VendorProfilePage = () => {
         const token = localStorage.getItem('token');
         if (!token) return navigate('/login');
 
-        const response = await fetch('http://localhost:5000/api/vendor/profile', {
+        const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/vendor/profile', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
@@ -64,7 +64,7 @@ const VendorProfilePage = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/vendor/profile', {
+      const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/vendor/profile', {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
@@ -259,3 +259,4 @@ const VendorProfilePage = () => {
 };
 
 export default VendorProfilePage;
+

@@ -33,7 +33,7 @@ const ProfilePage = () => {
         const token = localStorage.getItem('token');
         if (!token) return navigate('/login');
 
-        const response = await fetch('http://localhost:5000/api/customer/profile', {
+        const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/customer/profile', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
@@ -73,7 +73,7 @@ const ProfilePage = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/customer/profile', {
+      const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/customer/profile', {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
@@ -223,3 +223,4 @@ const ProfilePage = () => {
 };
 
 export default ProfilePage;
+

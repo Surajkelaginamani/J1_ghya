@@ -19,7 +19,7 @@ const Students = () => {
   const fetchStudents = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/vendor/students', {
+      const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/vendor/students', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -44,7 +44,7 @@ const Students = () => {
   const handleStatusUpdate = async (subscriptionId, newStatus) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/vendor/update-request', {
+      const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/vendor/update-request', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

@@ -18,7 +18,7 @@ const VendorDetailsPage = () => {
     const fetchVendorDetails = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:5000/api/customer/vendors/${id}`, {
+        const response = await fetch(`https://meal-mitra-vhcd.onrender.com/api/customer/vendors/${id}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -51,7 +51,7 @@ const VendorDetailsPage = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/customer/subscribe', {
+      const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/customer/subscribe', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

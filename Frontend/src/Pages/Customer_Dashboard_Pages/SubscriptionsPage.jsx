@@ -77,7 +77,7 @@ const SubscriptionsPage = () => {
           return;
         }
 
-        const response = await fetch('http://localhost:5000/api/customer/subscriptions', {
+        const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/customer/subscriptions', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -275,3 +275,4 @@ const BenefitItem = ({ text }) => (
 );
 
 export default SubscriptionsPage;
+

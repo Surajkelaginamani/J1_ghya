@@ -23,7 +23,7 @@ const MenuManagement = () => {
     const fetchData = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:5000/api/vendor/communications', {
+        const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/vendor/communications', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
@@ -55,7 +55,7 @@ const MenuManagement = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/vendor/update-menu', {
+      const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/vendor/update-menu', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ weeklyMenu: updatedWeeklyMenu })
@@ -82,7 +82,7 @@ const MenuManagement = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/vendor/post-announcement', {
+      const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/vendor/post-announcement', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
@@ -248,3 +248,4 @@ const MenuManagement = () => {
 };
 
 export default MenuManagement;
+

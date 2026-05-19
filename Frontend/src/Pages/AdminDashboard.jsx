@@ -34,8 +34,8 @@ const AdminDashboard = () => {
       const token = localStorage.getItem('token');
 
       const [pendingResponse, approvedResponse] = await Promise.all([
-        fetch('http://localhost:5000/api/auth/pending-vendors', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('http://localhost:5000/api/auth/approved-vendors', { headers: { Authorization: `Bearer ${token}` } })
+        fetch('https://meal-mitra-vhcd.onrender.com/api/auth/pending-vendors', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('https://meal-mitra-vhcd.onrender.com/api/auth/approved-vendors', { headers: { Authorization: `Bearer ${token}` } })
       ]);
 
       if (pendingResponse.ok) {
@@ -78,7 +78,7 @@ const AdminDashboard = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/auth/create-admin', {
+      const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/auth/create-admin', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -106,7 +106,7 @@ const AdminDashboard = () => {
   const handleApprove = async (vendor) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/auth/approve-vendor', {
+      const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/auth/approve-vendor', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -136,7 +136,7 @@ const AdminDashboard = () => {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/auth/approve-vendor', {
+      const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/auth/approve-vendor', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

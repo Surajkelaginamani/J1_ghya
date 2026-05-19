@@ -87,7 +87,7 @@ const LocationSummary = () => {
       const token = localStorage.getItem('token');
       if (!token) return navigate('/login');
 
-      const response = await fetch('http://localhost:5000/api/vendor/deliveries/today', {
+      const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/vendor/deliveries/today', {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -164,7 +164,7 @@ const LocationSummary = () => {
     try {
       setMarkingDeliveryId(actionKey);
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/vendor/deliveries/${subscriptionId}/mark-delivered`, {
+      const response = await fetch(`https://meal-mitra-vhcd.onrender.com/api/vendor/deliveries/${subscriptionId}/mark-delivered`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -193,7 +193,7 @@ const LocationSummary = () => {
     try {
       setResettingDeliveries(true);
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/vendor/deliveries/reset', {
+      const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/vendor/deliveries/reset', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -424,3 +424,4 @@ const LocationSummary = () => {
 };
 
 export default LocationSummary;
+

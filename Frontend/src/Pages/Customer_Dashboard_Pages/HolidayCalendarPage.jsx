@@ -33,7 +33,7 @@ const HolidayCalendarPage = () => {
       try {
         const token = localStorage.getItem('token');
         // Fetch ALL subscriptions instead of just the dashboard summary
-        const response = await fetch('http://localhost:5000/api/customer/subscriptions', {
+        const response = await fetch('https://meal-mitra-vhcd.onrender.com/api/customer/subscriptions', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         
@@ -187,7 +187,7 @@ const HolidayCalendarPage = () => {
     setIsSaving(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/customer/subscriptions/${activeSubscriptionId}/holidays`, {
+      const response = await fetch(`https://meal-mitra-vhcd.onrender.com/api/customer/subscriptions/${activeSubscriptionId}/holidays`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
@@ -424,3 +424,4 @@ const HolidayItem = ({ date, name, onRemove }) => {
 };
 
 export default HolidayCalendarPage;
+
